@@ -150,24 +150,24 @@ def extract(model, dataloader, save_dir):
     with torch.no_grad():
         for vid in dataloader:
             cap = cv2.VideoCapture(vid)
-            vname = vid.split('/')[-1]
-            vname = vname.split('.')[0]
-            #cnt = 0
+            vname = vid.split('/')[-1] # Split filename from path (./hello/video.mp4 => video.mp4)
+            vname = vname.split('.')[0] # Cutoff file extension (video.mp4 => video)
+            cnt = 0
             res = []
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                #if cnt % 5 == 0:
-                img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                im_pil = Image.fromarray(img)
-                tensor = data_transform(im_pil)
-                tensor = tensor.view(1, 3, 224, 224)
-                tensor = tensor.to(device)
-                output = model(tensor)
-                output = output.cpu().numpy()
-                res.append(output)
-                #cnt += 1
+                if cnt % 5 == 0:
+                    img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    im_pil = Image.fromarray(img)
+                    tensor = data_transform(im_pil)
+                    tensor = tensor.view(1, 3, 224, 224)
+                    tensor = tensor.to(device)
+                    output = model(tensor)
+                    output = output.cpu().numpy()
+                    res.append(output)
+                cnt += 1
             cap.release()
             print(np.shape(res))
             print('{} feature saved'.format(vname))
