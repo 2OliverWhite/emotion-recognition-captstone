@@ -22,125 +22,32 @@ def natural_keys(text):
 def get_feature(PATH):
     training_features = None
     training_labels = []
-    for f in os.listdir(PATH):
-        file_path = os.path.join(PATH, f)
-        #l = [0] * 9
-        print(file_path)
-        if "negative" in f or "arm" in f or '1' in f:
-            #l[0] = l[0] + 1
-            #if l[0] > 288:
-            #    continue
+
+    maxCount = 100
+
+    # Root Path Ex ./features/train3
+    for class_dir in os.listdir(PATH):
+        class_path = os.path.join(PATH, class_dir)
+        class_label = int(class_dir) - 1
+
+        count = 0
+        for feature_f_name in os.listdir(class_path):
+            if count > maxCount:
+                break
+            count += 1
+            feature_path = os.path.join(class_path, feature_f_name)
+
+            features = np.load(feature_path)
+            labels = None
             if training_features is None:
-                training_features = np.load(file_path)
-                labels = [0 for i in range(len(training_features))]
+                training_features = features
+                labels = [class_label for i in range(len(training_features))]
             else:
-                features = np.load(file_path)
-                labels = [0 for i in range(len(features))]
+                labels = [class_label for i in range(len(features))]
                 training_features = np.concatenate((training_features, features), axis=0)
+
             training_labels.extend(labels)
 
-        if "neutral" in f or "head" in f or '2' in f:
-            #l[1] = l[1] + 1
-            #if l[1] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [1 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [1 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
-
-        if "positive" in f or "spin" in f or '3' in f:
-            #l[2] = l[2] + 1
-            #if l[2] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [2 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [2 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
-
-        if '4' in f:
-            #l[3] = l[3] + 1
-            #if l[3] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [3 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [3 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
-
-        if '5' in f:
-            #l[4] = l[4] + 1
-            #if l[4] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [4 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [4 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
-
-        if '6' in f:
-            #l[5] = l[5] + 1
-            #if l[5] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [5 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [5 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
-
-        if '7' in f:
-            #l[6] = l[6] + 1
-            #if l[6] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [6 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [6 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
-
-        if '8' in f:
-            #l[7] = l[7] + 1
-            #if l[7] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [7 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [7 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
-
-        if '9' in f:
-            #l[8] = l[8] + 1
-            #if l[8] > 288:
-            #    continue
-            if training_features is None:
-                training_features = np.load(file_path)
-                labels = [8 for i in range(len(training_features))]
-            else:
-                features = np.load(file_path)
-                labels = [8 for i in range(len(features))]
-                training_features = np.concatenate((training_features, features), axis=0)
-            training_labels.extend(labels)
+       
     print(training_features.shape)
     return training_features, np.array(training_labels).squeeze()

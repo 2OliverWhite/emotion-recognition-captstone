@@ -6,14 +6,23 @@ from models.ms_tcn.ms_tcn import MultiStageTCN
 from models.ms_tcn.ms_tcn_loss import AverageMeter, ActionSegmentationLoss
 import argparse
 import numpy as np
+import sys
+import os
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_set_path', default="./data/full/train")
+    """ parser.add_argument('--train_set_path', default="./data/full/train")
     parser.add_argument('--val_set_path', default="./data/full/test")
-    parser.add_argument('--test_set_path', default="./data/full/test")
+    parser.add_argument('--test_set_path', default="./data/full/test") """
+
+    # Paths
+    parser.add_argument('--train_set_path', default="./features/train3")
+    parser.add_argument('--val_set_path', default="./features/valid3")
+    parser.add_argument('--test_set_path', default="./features/test3")
+
+    # Model Structure
     parser.add_argument('--input_size', type=int, default=2048)
-    parser.add_argument('--output_size', type=int, default=9)
+    parser.add_argument('--output_size', type=int, default=3) # Num Classes
     parser.add_argument('--num_stages', type=list, default=['dilated', 'dilated', 'dilated', 'dilated'])
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--num_epochs', type=int, default=100)
@@ -25,12 +34,18 @@ if __name__ == '__main__':
     PATH_train = args.train_set_path
     PATH_val = args.val_set_path
     PATH_test = args.test_set_path
+
+    train_images, train_labels, val_images, val_labels, test_images, test_labels = None, None, None, None, None, None
+
     try:
+        print("Getting Training Features")
         train_images, train_labels = data_retrieval.get_feature(PATH_train)
+        print("Getting Val Features")
         val_images, val_labels = data_retrieval.get_feature(PATH_val)
+        print("Getting Test Features")
         test_images, test_labels = data_retrieval.get_feature(PATH_test)
-    except:
-        print("Please check your feature file path")
+    except Exception:
+        raise(Exception)
 
     print(f'0. received train image size: {train_images.shape}')
     print(f'0. received val image size: {val_images.shape}')
@@ -63,7 +78,7 @@ if __name__ == '__main__':
         losses = AverageMeter('Loss', ':.4e')
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         criterion = ActionSegmentationLoss(
-            ce=True, tmse=True, weight=None,
+            ce=True, tmse=False, weight=None,
             ignore_index=255, tmse_weight=0.15
         )
 
@@ -72,7 +87,7 @@ if __name__ == '__main__':
         model.train()
         n_total_steps = len(train_loader)
         max_val_f1_score = None
-        PATH = "model_zoo/ms_tcn_raw_9_full.pth"
+        PATH = "./ms_tcn/weights"
         max_val_f1_score = None
 
         #length = 288
@@ -85,12 +100,18 @@ if __name__ == '__main__':
             val_l = 0
             f1_ = 0
             train_f1 = 0
-            for i, (x, y) in enumerate(train_loader):
+            for batch_index, (x, y) in enumerate(train_loader):
+
+    
+                frame_len = 1
+                # continue
+
                 # forward
                 train_set = x.to(device)
-                ground_truth = np.zeros((len(x), args.frame_len))
+        
+                ground_truth = np.zeros((len(x), frame_len))
                 for k in range(len(x)):
-                    ground_truth[k, :] = np.array([y[k] for _ in range(args.frame_len)])
+                    ground_truth[k, :] = np.array([y[k] for _ in range(frame_len)])
                 ground_truth = torch.tensor(ground_truth).to(device)
                 train_set.transpose_(2, 1)
                 output = model(train_set)
@@ -124,11 +145,12 @@ if __name__ == '__main__':
                     else:
                         if max_val_f1_score < val_f1_score:
                             max_val_f1_score = val_f1_score
-                            torch.save(model.state_dict(), PATH)
+                            os.makedirs(PATH, exist_ok=True)
+                            torch.save(model.state_dict(), os.path.join(PATH, "./best_so_far.pth"))
                     model.train()
 
                 print(
-                    f'epoch: {epoch} batch: {i} / {len(train_loader)} loss: {loss.item()} val weighted f1-score: {val_f1_score}')
+                    f'epoch: {epoch} batch: {batch_index} / {len(train_loader)} loss: {loss.item()} val weighted f1-score: {val_f1_score}')
 
             print("2. Finished training")
     elif args.mode == 'test':
@@ -138,8 +160,8 @@ if __name__ == '__main__':
             val_output = model(val_x_)
             output_ = val_output.max(1)[1].squeeze(0).cpu().numpy()
             pre = []
-            for i in range(len(output_)):
-                kk = output_[i]
+            for batch_index in range(len(output_)):
+                kk = output_[batch_index]
                 counts = np.bincount(kk)
                 pre.append(np.argmax(counts))
             val_f1_score = f1_score(val_y, pre, average='weighted')
