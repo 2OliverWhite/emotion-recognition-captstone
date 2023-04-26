@@ -6,8 +6,9 @@ import numpy as np
 from torchvision import transforms
 import cv2
 from PIL import Image
+import json
 
-def train_model(model, dataloaders, criterion, optimizer, save_dir = None, save_all_epochs=False, num_epochs=30):
+def train_model(model, dataloaders, criterion, optimizer, name, save_dir = None, save_all_epochs=False, num_epochs=30):
     '''
     model: The NN to train
     dataloaders: A dictionary containing at least the keys 
@@ -78,17 +79,63 @@ def train_model(model, dataloaders, criterion, optimizer, save_dir = None, save_
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
             if phase == 'valid':
+
+                if epoch % 10 == 9:
+                    torch.save(model.state_dict(), f"weights/{name}_epoch_{epoch}.pth")
+
                 val_losses.append(epoch_loss)
                 val_acc.append(epoch_acc)
             if phase == "train":
                 train_losses.append(epoch_loss)
                 train_acc.append(epoch_acc)
 
+        
+
         print()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Best valid Acc: {:4f}'.format(best_acc))
+
+    with open(f'losses_files_{name}.txt', 'w') as filehandle:
+        filehandle.write("Train Losses\n")
+        filehandle.write("[")
+        for value in train_losses:
+            filehandle.write(str(value))
+            filehandle.write(",")
+        filehandle.write("]")
+
+        filehandle.write("\n")
+
+        filehandle.write("Train Acc\n")
+        filehandle.write("[")
+        for value in train_acc:
+            filehandle.write(str(value))
+            filehandle.write(",")
+        filehandle.write("]")
+
+        filehandle.write("\n")
+
+        filehandle.write("Val Losses\n")
+        filehandle.write("[")
+        for value in val_losses:
+            filehandle.write(str(value))
+            filehandle.write(",")
+        filehandle.write("]")
+
+        filehandle.write("\n")
+
+        filehandle.write("Val Acc\n")
+        filehandle.write("[")
+        for value in val_acc:
+            filehandle.write(str(value))
+            filehandle.write(",")
+        filehandle.write("]")
+
+        filehandle.write("\n")
+        
+
+
 
     # load best model weights
     model.load_state_dict(best_model_wts)
@@ -115,7 +162,7 @@ def evaluate(model, dataloader, criterion, is_labelled = False, generate_labels 
             if is_labelled:
                 loss = criterion(outputs, labels)
 
-            _, preds = torch.topk(outputs, k=5, dim=1)
+            _, preds = torch.topk(outputs, k=k, dim=1)
             if generate_labels:
                 nparr = preds.cpu().detach().numpy()
                 predicted_labels.extend([list(nparr[i]) for i in range(len(nparr))])
@@ -158,17 +205,18 @@ def extract(model, dataloader, save_dir):
                 ret, frame = cap.read()
                 if not ret:
                     break
-                if cnt % 5 == 0:
-                    img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    im_pil = Image.fromarray(img)
-                    tensor = data_transform(im_pil)
-                    tensor = tensor.view(1, 3, 224, 224)
-                    tensor = tensor.to(device)
-                    output = model(tensor)
-                    output = output.cpu().numpy()
-                    res.append(output)
-                cnt += 1
+                # if cnt % 5 == 0:
+                img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                im_pil = Image.fromarray(img)
+                tensor = data_transform(im_pil)
+                tensor = tensor.view(1, 3, 224, 224)
+                tensor = tensor.to(device)
+                output = model(tensor)
+                output = output.cpu().numpy()
+                res.append(output)
+                #cnt += 1
             cap.release()
             print(np.shape(res))
             print('{} feature saved'.format(vname))
+            continue
             np.save('{}/{}.npy'.format(save_dir, vname), res)
